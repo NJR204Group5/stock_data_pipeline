@@ -1,4 +1,4 @@
-CREATE TABLE stock_prices (
+CREATE TABLE IF NOT EXISTS stock_prices (
     id SERIAL PRIMARY KEY, -- 自增主鍵
     stock_code VARCHAR(10) NOT NULL, -- 證券代碼
     stock_name VARCHAR(100) NOT NULL, -- 證券名稱
@@ -16,14 +16,16 @@ CREATE TABLE stock_prices (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- 建立時間
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- 更新時間
 );
--- 建立 複合唯一鍵，同一個股票+同一天的交易資料只能有一筆
-ALTER TABLE stock_prices
-ADD CONSTRAINT uq_stock_date UNIQUE (stock_code, trade_date);
+-- 建立 唯一索引，確保資料表裡 同一支股票在同一天只能有一筆資料
+CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_date
+ON stock_prices(stock_code, trade_date);
 
 -- 常用索引
-CREATE INDEX idx_stock_code ON stock_prices(stock_code);
-CREATE INDEX idx_trade_date ON stock_prices(trade_date);
+CREATE INDEX IF NOT EXISTS idx_stock_code ON stock_prices(stock_code);
+CREATE INDEX IF NOT EXISTS idx_trade_date ON stock_prices(trade_date);
+CREATE INDEX IF NOT EXISTS idx_stock_date_desc ON stock_prices(stock_code, trade_date DESC);
 
+DROP TRIGGER IF EXISTS update_stock_prices_updated_at ON stock_prices;
 -- 建立 trigger 更新 updated_at
 CREATE TRIGGER update_stock_prices_updated_at
 BEFORE UPDATE ON stock_prices

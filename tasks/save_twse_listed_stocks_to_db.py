@@ -11,7 +11,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # PostgreSQL 連線設定
 DB_CONFIG = {
-    "host": "localhost",
+    "host": "postgres",
     "port": 5432,
     "dbname": "stockdb",
     "user": "stockuser",

@@ -1,4 +1,3 @@
-
 import random
 import certifi
 import psycopg
@@ -7,9 +6,9 @@ import pandas as pd
 import pandas_market_calendars as mcal
 import urllib3
 import re
-from datetime import datetime
 import time
 
+from datetime import datetime
 from config import HEADERS
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -18,7 +17,7 @@ tw_calendar = mcal.get_calendar("XTAI") # XTAI = Taiwan Stock Exchange
 
 # PostgreSQL 連線設定
 DB_CONFIG = {
-    "host": "localhost",
+    "host": "postgres",
     "port": 5432,
     "dbname": "stockdb",
     "user": "stockuser",
@@ -52,7 +51,8 @@ def fetch_month_data(stock_code, year, month, retry=5, debug=False):
         try:
             time.sleep(0.5)
 
-            res = requests.get(url, headers=HEADERS, timeout=(10, 40), verify=certifi.where())
+            # res = requests.get(url, headers=HEADERS, timeout=(10, 40), verify=certifi.where())
+            res = requests.get(url, headers=HEADERS, timeout=(10, 40), verify=False)
             res.raise_for_status()
             data = res.json()
             if debug:

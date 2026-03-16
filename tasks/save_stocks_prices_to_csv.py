@@ -6,9 +6,9 @@ import pandas_market_calendars as mcal
 import urllib3
 import os
 import re
-from datetime import datetime
 import time
 
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from config import HEADERS
 from config import OUTPUT_DIR

@@ -4,7 +4,7 @@ from psycopg import OperationalError
 
 # PostgreSQL 連線設定，依 Docker 設定修改
 DB_CONFIG = {
-    "host": "localhost",        # Docker 對外的 port 對應的 host
+    "host": "postgres",        # Docker 對外的 port 對應的 host
     "port": 5432,               # Docker PostgreSQL port
     "dbname": "stockdb",        # 資料庫名稱
     "user": "stockuser",         # Docker 建立時的帳號
