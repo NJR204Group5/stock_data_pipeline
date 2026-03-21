@@ -1,0 +1,6 @@
+psycopg[binary]==3.2.1 
+pandas 
+requests 
+pandas_market_calendars 
+certifi 
+urllib3

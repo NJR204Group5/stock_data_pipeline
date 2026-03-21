@@ -1,0 +1,70 @@
+version: 2
+
+# 定義來源資料表
+sources:
+  - name: raw          # dbt 裡 source 名稱
+    schema: public     # PostgreSQL schema，對應你資料庫的 schema
+    tables:
+      - name: stock_prices
+      - name: stocks
+
+models:
+  - name: stg_stock_prices
+    description: "Staging table for raw stock prices"
+    columns:
+      - name: stock_code
+        description: "股票代號"
+        data_tests:
+          - not_null
+      - name: trade_date
+        description: "交易日期"
+        data_tests:
+          - not_null
+      - name: open
+        description: "開盤價"
+      - name: high
+        description: "最高價"
+      - name: low
+        description: "最低價"
+      - name: close
+        description: "收盤價"
+      - name: volume
+        description: "成交量"
+
+  - name: daily_stock_summary
+    description: "每日股票聚合表"
+    columns:
+      - name: stock_code
+        description: "股票代號"
+        data_tests:
+          - not_null
+      - name: trade_date
+        description: "交易日期"
+        data_tests:
+          - not_null
+      - name: open
+      - name: high
+      - name: low
+      - name: close
+      - name: volume
+      - name: avg_price
+        description: "當日平均收盤價"
+
+  - name: monthly_stock_summary
+    description: "每月股票聚合表（K線表）"
+    columns:
+      - name: stock_code
+        description: "股票代號"
+        data_tests:
+          - not_null
+      - name: year_month
+        description: "年月，格式 YYYY-MM"
+        data_tests:
+          - not_null
+      - name: open
+      - name: high
+      - name: low
+      - name: close
+      - name: volume
+      - name: avg_price
+        description: "當月平均收盤價"
