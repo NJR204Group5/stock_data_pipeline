@@ -1,134 +1,288 @@
-# 台股股票 / ETF 資料自動化搜集與分析系統
+# Stock Data Pipeline
 
-## 介紹
-
-建立一套完整的資料工程流程，自動化蒐集台股股票與 ETF 資料，並透過資料建模與視覺化，提供投資分析與決策參考。
-
-系統涵蓋：
-
-* 資料抓取（ETL）
-* 資料庫（PostgreSQL）
-* 資料建模（dbt）
-* 資料視覺化（Metabase）
+An end-to-end data engineering project that builds a scalable **stock data pipeline**, covering data ingestion, transformation, storage, and visualization for financial analysis.
 
 ---
 
-## 系統架構
+## Overview
 
-```
-    TWSE API(取資料)
-        ↓
-    Airflow（排程）
-        ↓
-    PostgreSQL（資料庫）
-        ↓
-    dbt（資料轉換、資料分析）
-        ↓
-    Metabase（Dashboard）
-```
+This project follows a modern data stack architecture, separating data ingestion, storage, transformation, and visualization layers.
+It implements a complete end-to-end data pipeline for stock market data, designed to be scalable, maintainable, and analytics-ready.
+
+### Key Components
+
+- **Data Ingestion**  
+  Collect stock market data from external APIs (e.g., TWSE)
+
+- **Data Storage**  
+  Store raw data in PostgreSQL as the centralized data warehouse
+
+- **Data Transformation**  
+  Use dbt to clean, transform, and model data into analytics-ready datasets
+
+- **Workflow Orchestration**  
+  Automate and schedule pipelines using Apache Airflow
+
+- **Data Visualization**  
+  Build interactive dashboards in Metabase for data exploration
+
+### Objective
+
+To design a **scalable, maintainable, and analytics-ready data pipeline** for stock market analysis.
 
 ---
 
-## 技術
-
-| 類別  | 工具         |
-| --- | ---------- |
-| 語言  | Python     |
-| 排程  | Airflow    |
-| 資料庫 | PostgreSQL |
-| 建模  | dbt        |
-| 視覺化 | Metabase   |
-| 容器化 | Docker     |
+## Architecture
+    +------------------+
+    |   Data Sources   |
+    | (TWSE API)|
+    +--------+---------+
+             |
+             v
+    +------------------+
+    | Data Ingestion   |
+    | (Python Scripts) |
+    +--------+---------+
+             |
+             v
+    +------------------+
+    |  PostgreSQL      |
+    | (Raw Data Layer) |
+    +--------+---------+
+             |
+             v
+    +------------------+
+    | dbt Transformation|
+    | (Data Modeling)  |
+    +--------+---------+
+             |
+             v
+    +------------------+
+    | Analytics Layer  |
+    +------------------+
+             ^
+             |
+    +------------------+
+    |  Apache Airflow  |
+    | (Orchestration)  |
+    +------------------+
 
 ---
 
-## 資料流程（Data Pipeline）
+## Tech Stack
 
-1. 使用 Airflow DAG 定期抓取台股資料
-2. 原始資料寫入 PostgreSQL
-3. dbt 進行資料清洗與建模
-4. Metabase 建立 Dashboard 提供視覺分析
+- **Language**: Python, SQL
+- **Orchestration**: Apache Airflow  
+- **Transformation**: dbt  
+- **Database**: PostgreSQL
+- **Visualization**: Metabase
+- **Data Sources**:  
+  - TWSE (Taiwan Stock Exchange)  
+
+---
+
+## Data Pipeline
+
+1. Use Airflow DAGs to periodically fetch Taiwan stock market data  
+2. Store raw data in PostgreSQL  
+3. Transform and model data using dbt 
+4. Serve analytical data through Metabase dashboards
+
+---
+
+## Database Schema (PostgreSQL)
+
+PostgreSQL is used as the centralized data warehouse, with a schema optimized for performance, data integrity, and analytical workloads.
+Raw data is stored in normalized tables, while dbt transforms the data into denormalized star schema models for downstream analytics.
+
+### Core Tables
+
+#### stocks
+
+Stores static information about listed stocks.
+
+- `stock_code` (PK)  
+- `stock_name`  
+- `industry`  
+- `market`  
+- `listed_date`  
+- `delisted_date`  
+
+**Features:**
+- Indexed on `industry` and `listed_date`
+- Automatically maintains `updated_at` via trigger
+
+---
+
+#### stock_prices
+
+Stores daily trading data for each stock.
+
+- `stock_code`  
+- `trade_date`  
+- `open`, `high`, `low`, `close`  
+- `volume`, `turnover`  
+- `transactions`  
+
+**Features:**
+- Unique constraint on (`stock_code`, `trade_date`)
+- Indexed for time-series queries
+- Supports fast lookup for historical analysis
+- Automatic `updated_at` tracking via trigger
+
+---
+
+### Data Integrity & Automation
+
+- **Triggers**
+  - Automatically update `updated_at` on row updates
+
+- **Indexes**
+  - Optimized for:
+    - Time-series queries (`trade_date`)
+    - Stock-based queries (`stock_code`)
+    - Combined queries (`stock_code`, `trade_date DESC`)
+
+---
+
+### Design Considerations
+
+- Ensures **data consistency** with unique constraints  
+- Optimized for **analytical queries and time-series analysis**  
+- Supports downstream transformations in dbt  
 
 ---
 
 ## dbt Models
 
-### 1 資料清洗
+### 1. Staging Layer
 
-* `stg_stock_prices`
-
-  * 資料型別轉換（date / numeric / bigint）
-
----
-
-### 2 技術指標
-
-* `stock_ma`
-
-  * MA5 / MA20 / MA60（移動平均線）
-
-* `stock_indicators`
-
-  * 黃金交叉（Golden Cross）
-  * 死亡交叉（Death Cross）
-  * 多頭 / 空頭排列（Trend Type）
+- `stg_stock_prices`
+  - Data type normalization (date, numeric, bigint)  
+  - Data standardization for downstream processing 
 
 ---
 
-## Dashboard（Metabase）
+### 2. Technical Indicators Layer
 
-### 股價與技術指標
+- `stock_ma`
+  - Moving averages: MA5 / MA20 / MA60
 
-* 收盤價 + MA5 / MA20 / MA60
-* 顯示趨勢變化
-
----
-
-### 買賣訊號分析
-
-* 黃金交叉（買點）
-* 死亡交叉（賣點）
+- `stock_indicators`
+  - Golden Cross
+  - Death Cross
+  - Bullish / Bearish trend classification
 
 ---
 
-### 成交量分析
+## Data Model (Star Schema)
 
-* 成交量變化
-* 爆量偵測
+The analytics layer is generated from dbt models and contains daily stock prices with technical indicators.  
+It is optimized for dashboards, reporting, and stock analysis.
+
+### dbt Models
+
+1. **`stg_stock_prices`** – Cleans and normalizes raw stock prices.  
+   - Converts `trade_date` to `DATE`, prices to `NUMERIC`, `volume` to `BIGINT`.  
+   - Materialized as a **view**.
+
+2. **`stock_ma`** – Calculates moving averages (MA5 / MA20 / MA60).  
+   - Uses window functions over `stg_stock_prices`.
+
+3. **`stock_indicators`** – Computes technical indicators and returns.  
+   - Cross signals: golden cross / death cross  
+   - Trend type: bullish / bearish / neutral  
+   - Daily return & cumulative return  
+   - Materialized as a **table** for analysis and dashboards
 
 ---
 
-## 功能特色
+### Stock Indicators Table (`stock_indicators`)
 
-* 自動化資料收集（Airflow）
-* 可重現的資料轉換（dbt）
-* 即時視覺化 Dashboard（Metabase）
-* 技術分析指標整合
-* 支援多股票查詢與比較
+| Column                  | Type      | Description |
+|-------------------------|----------|------------|
+| `stock_code`            | VARCHAR  | Stock code |
+| `stock_name`            | VARCHAR  | Stock name |
+| `trade_date`            | DATE     | Trading date |
+| `close`                 | NUMERIC  | Closing price |
+| `ma5`                   | NUMERIC  | 5-day moving average |
+| `ma20`                  | NUMERIC  | 20-day moving average |
+| `ma60`                  | NUMERIC  | 60-day moving average |
+| `cross_signal`          | VARCHAR  | Golden Cross / Death Cross / None |
+| `trend_type`            | VARCHAR  | Bullish / Bearish / Neutral trend |
+| `daily_return`          | NUMERIC  | Daily return |
+| `cumulative_return`     | NUMERIC  | Cumulative return |
+| `stock_display`         | VARCHAR  | Stock display name (`stock_code - stock_name`) |
+
+**Notes:**  
+- The final analytics table is generated via dbt transformations:  
+  `stg_stock_prices` → `stock_ma` → `stock_indicators`  
+- Window functions are used to calculate moving averages, cross signals, and returns.  
 
 ---
 
-## 如何啟動專案
+### dbt Pipeline Overview
 
-### 1 啟動 Docker
+```text
+stg_stock_prices → stock_ma → stock_indicators
+```
+
+---
+
+## Dashboard (Metabase)
+
+### Stock Price & Technical Indicators
+
+- Closing price with MA5 / MA20 / MA60
+- Trend visualization
+
+---
+
+### Trading Signal Analysis
+
+- Golden Cross (buy signal) 
+- Death Cross (sell signal)
+
+---
+
+### Return Analysis
+
+- Cumulative returns 
+- Daily return volatility 
+
+---
+
+## Features
+
+- Automated data ingestion (Airflow)
+- Reproducible data transformations (dbt)
+- Real-time visualization dashboards (Metabase) 
+- Integrated technical analysis indicators
+- Flexible filtering by stock and date 
+
+---
+
+## Getting Started
+
+### 1 Start Docker
 
 ```bash
 docker-compose up -d
 ```
 
-### 2 開啟 Airflow
+### 2 Access Airflow
 
 ```text
 http://localhost:8080
 ```
 
-### 3 啟動 dbt
+### 3 Run dbt
 
 ```bash
 dbt run
 ```
 
-### 4 開啟 Metabase
+### 4 Access Metabase
 
 ```text
 http://localhost:3000
@@ -136,9 +290,9 @@ http://localhost:3000
 
 ---
 
-## 未來優化方向
+## Future Improvements
 
-* 加入更多技術指標
-* 加入其他股票市場
-* 部署至 GCP / AWS
-* 建立 API（FastAPI）
+* Add more technical indicators
+* Support additional stock markets
+* Deploy to cloud platforms (GCP / AWS)
+* Build an API service (e.g., FastAPI)

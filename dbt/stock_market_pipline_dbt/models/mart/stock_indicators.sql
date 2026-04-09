@@ -7,7 +7,14 @@ with ma as (
 )
 
 select
-    *,
+    stock_code,
+    stock_name,
+    trade_date,
+    close,
+    ma5,
+    ma20,
+    ma60,
+    stock_code || ' - ' || stock_name as stock_display,
 
     -- 黃金 / 死亡交叉
     case 
@@ -29,6 +36,13 @@ select
         when ma5 > ma20 and ma20 > ma60 then 'bullish'
         when ma5 < ma20 and ma20 < ma60 then 'bearish'
         else 'neutral'
-    end as trend_type
+    end as trend_type,
+
+    -- 日報酬率 = (今天收盤 - 昨天收盤) / 昨天收盤
+    (close - lag(close) over (partition by stock_code order by trade_date)) 
+    / NULLIF(lag(close) over (partition by stock_code order by trade_date), 0) as daily_return,
+    -- 累積報酬率 = (今天收盤 / 第一日收盤) - 1
+    close / NULLIF(first_value(close) over (partition by stock_code order by trade_date), 0) - 1 as cumulative_return
 
 from ma
+

@@ -1,7 +1,9 @@
 select
     stock_code,
+    stock_name,
     trade_date,
     close,
+    stock_code || ' - ' || stock_name as stock_display,
 
     avg(close) over (
         partition by stock_code 
@@ -22,3 +24,4 @@ select
     ) as ma60
 
 from {{ ref('stg_stock_prices') }}
+

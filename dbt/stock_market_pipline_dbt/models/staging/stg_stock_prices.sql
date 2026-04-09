@@ -6,6 +6,7 @@
 with raw as (
     select
         stock_code,
+        stock_name,
         trade_date::date as trade_date,
         open::numeric as open,
         high::numeric as high,

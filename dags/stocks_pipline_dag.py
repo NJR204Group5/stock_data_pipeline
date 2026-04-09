@@ -35,25 +35,13 @@ with DAG(
     'stocks_pipline_dag',
     default_args=default_args,
     description='ETL pipeline for TWSE stocks data',
-    schedule='0 10 * * *',  # 每天 10:00 台灣時間
+    schedule='0 10 * * *',  # 每天 10:00 台灣時間, 分 時 日 月 星期
     start_date=datetime(2026, 3, 12, tzinfo=TW_TZ),
     catchup=False,
     tags=['twse', 'stocks'],
 ) as dag:
 
-    # 等建表 DAG 完成
-    # wait_for_create_tables = ExternalTaskSensor(
-    #     task_id='wait_for_create_tables',
-    #     external_dag_id='create_tables_dag',     # 建表 DAG 的 DAG ID
-    #     external_task_id='create_tables_task',   # 建表 DAG 的 task ID
-    #     mode='poke',
-    #     poke_interval=30,  # 每 30 秒檢查一次
-    #     timeout=600,       # 最多等 10 分鐘
-    # )
-
     update_stocks_db = PythonOperator(
         task_id='update_stocks_db',
         python_callable=wrapped_run_stocks_to_db
     )
-
-    # update_stocks_db

@@ -39,5 +39,3 @@ with DAG(
         task_id='create_tables_task',
         python_callable=wrapped_create_tables
     )
-
-    # create_tables_task
