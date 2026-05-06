@@ -21,7 +21,7 @@ genai.configure(
 for m in genai.list_models():
     print(m.name)
 
-model = genai.GenerativeModel("models/gemini-2.0-flash-lite") # 可換 "models/gemini-flash-lite-latest"
+model = genai.GenerativeModel("models/gemini-flash-lite-latest")
 
 def generate_stock_summary(stock_data: dict):
     prompt = f"""
