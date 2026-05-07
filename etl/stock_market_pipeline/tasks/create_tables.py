@@ -15,7 +15,8 @@ BASE_DIR = Path("/opt/airflow/etl/stock_market_pipeline/db/schema")
 SQL_FILES = [
     "schema.sql",
     "stocks.sql",
-    "stock_prices.sql"
+    "stock_prices.sql",
+    "rag_documents.sql"
 ]
 
 def run():
