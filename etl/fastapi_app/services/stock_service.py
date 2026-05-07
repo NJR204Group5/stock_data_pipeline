@@ -68,3 +68,18 @@ def get_latest_stock_signal(stock_code: str):
             row = cur.fetchone()
 
     return dict(row) if row else None
+
+def get_stock_context(stock_code: str, limit: int = 30):
+    sql = """
+        SELECT stock_code, stock_name, trade_date, close, ma5, ma20, ma60, cross_signal, trend_type, daily_return, cumulative_return
+        FROM stock_indicators
+        WHERE stock_code = %s
+        ORDER BY trade_date DESC
+        LIMIT %s
+    """
+
+    with get_connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, (stock_code, limit))
+            rows = cur.fetchall()
+    return [dict(row) for row in rows]

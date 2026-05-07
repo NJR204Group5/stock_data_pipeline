@@ -1,13 +1,16 @@
 
+import re
 from fastapi import APIRouter, Query, HTTPException
+from schemas.chat_schema import ChatRequest
 from services.stock_service import (
     get_all_stocks,
     get_stock_prices,
     get_stock_indicators,
     get_latest_stock_signal,
+    get_stock_context,
 )
 from fastapi.encoders import jsonable_encoder
-from services.llm_service import generate_stock_summary
+from services.llm_service import generate_stock_summary, answer_stock_question
 
 router = APIRouter(
     prefix="/stocks",
@@ -50,4 +53,35 @@ def stock_summary(stock_code: str):
     return {
         "stock_code": stock_code,
         "ai_summary": summary,
+    }
+
+@router.post("/chat")
+def stock_chat(request: ChatRequest):
+    match = re.search(r"\b\d{4}\b", request.question)
+
+    if not match:
+        raise HTTPException(
+            status_code=400,
+            detail="Please include a stock code, for example: 2330 最近趨勢如何？"
+        )
+
+    stock_code = match.group()
+
+    stock_context = get_stock_context(stock_code)
+
+    if not stock_context:
+        raise HTTPException(
+            status_code=404,
+            detail="No stock data found"
+        )
+
+    answer = answer_stock_question(
+        question=request.question,
+        stock_context=stock_context
+    )
+
+    return {
+        "stock_code": stock_code,
+        "question": request.question,
+        "answer": answer
     }

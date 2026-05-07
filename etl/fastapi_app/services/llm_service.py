@@ -57,3 +57,26 @@ def generate_stock_summary(stock_data: dict):
         return "Gemini quota exceeded, please try again later."
     except Exception as e:
         return f"LLM error: {str(e)}"
+
+def answer_stock_question(question: str, stock_context: list[dict]):
+    prompt = f"""
+        You are a stock data assistant.
+        Answer the user's question based only on the following stock data:
+        Do not make up information.
+        If the data is not enough, say the data is not enough.
+        
+        User question: {question}
+        
+        Stock data: {stock_context}
+        
+        Please answer in Traditional Chinese.
+        Keep the answer clear and concise.
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except ResourceExhausted:
+        return "Gemini quota exceeded, please try again later."
+    except Exception as e:
+        return f"LLM error: {str(e)}"
