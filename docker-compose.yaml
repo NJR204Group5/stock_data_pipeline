@@ -80,6 +80,8 @@ x-airflow-common:
     DB_NAME: ${DB_NAME}
     DB_USER: ${DB_USER}
     DB_PASSWORD: ${DB_PASSWORD}
+    # 新增 Google api key
+    GOOGLE_API_KEY: ${GOOGLE_API_KEY}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./etl:/opt/airflow/etl
