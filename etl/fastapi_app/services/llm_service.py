@@ -160,10 +160,11 @@ def answer_with_context(question: str, context_docs: list[dict]):
     )
 
     prompt = f"""
-    You are a stock analysis assistant.
+    You are an AI stock assistant.
 
-    Answer the user's question based only on the context below.
-    If the context is not enough, say the data is not enough.
+    Answer the user's question based on the context below.
+
+    Try your best to provide a concise analysis.
 
     Context:
     {context_text}

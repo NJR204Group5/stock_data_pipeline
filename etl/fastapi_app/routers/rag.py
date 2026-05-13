@@ -15,7 +15,7 @@ class RagQuestion(BaseModel):
 @router.post("/chat")
 def rag_chat(request: RagQuestion):
     docs = search_similar_documents(request.question)
-
+    print(docs)
     answer = answer_with_context(
         question=request.question,
         context_docs=docs
