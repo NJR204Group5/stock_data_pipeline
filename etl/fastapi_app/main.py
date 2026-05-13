@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI
-from routers import stocks
+from routers import stocks, rag
 
 app = FastAPI(
     title="Stock Market API",
@@ -9,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(stocks.router)
+app.include_router(rag.router)
 
 @app.get("/")
 def root():

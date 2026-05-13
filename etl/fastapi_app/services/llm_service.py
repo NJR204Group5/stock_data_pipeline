@@ -80,3 +80,27 @@ def answer_stock_question(question: str, stock_context: list[dict]):
         return "Gemini quota exceeded, please try again later."
     except Exception as e:
         return f"LLM error: {str(e)}"
+
+def answer_with_context(question: str, context_docs: list[dict]):
+    context_text = "\n\n".join(
+        doc["chunk_text"] for doc in context_docs
+    )
+
+    prompt = f"""
+    You are a stock analysis assistant.
+
+    Answer the user's question based only on the context below.
+    If the context is not enough, say the data is not enough.
+
+    Context:
+    {context_text}
+
+    Question:
+    {question}
+
+    Please answer in Traditional Chinese.
+    """
+
+    response = model.generate_content(prompt)
+
+    return response.text
