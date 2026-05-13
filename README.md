@@ -1,6 +1,6 @@
-# Stock Data Pipeline
+# AI-Powered Stock Data Platform
 
-An end-to-end data engineering project that builds a scalable **stock data pipeline**, covering data ingestion, transformation, storage, and visualization for financial analysis.
+An end-to-end data engineering project that builds a scalable **AI-Powered Stock Data Platform**, covering data ingestion, transformation, storage, and visualization for financial analysis.
 
 ---
 
@@ -8,8 +8,31 @@ An end-to-end data engineering project that builds a scalable **stock data pipel
 
 This project follows a modern data stack architecture, separating data ingestion, storage, transformation, and visualization layers.
 It implements a complete end-to-end data pipeline for stock market data, designed to be scalable, maintainable, and analytics-ready.
+In addition to traditional data engineering workflows, the platform also integrates LLM-powered analytics and Retrieval-Augmented Generation (RAG) capabilities.
+
+The system supports:
+- AI-generated stock analysis summaries
+- Semantic document search using pgvector
+- Embedding pipelines powered by Gemini
+- RAG-based question answering APIs
+- AI response caching for performance optimization
 
 ### Key Components
+
+- **API Service**
+  Provide stock analytics APIs using FastAPI
+
+- **LLM Integration**
+  Generate AI-powered stock analysis summaries using Gemini
+
+- **RAG Pipeline**
+  Build Retrieval-Augmented Generation workflows with embeddings and pgvector
+
+- **Semantic Search**
+  Perform vector similarity search for contextual document retrieval
+
+- **AI Summary Cache**
+  Store generated AI summaries in PostgreSQL to reduce LLM API usage
 
 - **Data Ingestion**  
   Collect stock market data from external APIs (e.g., TWSE)
@@ -28,44 +51,52 @@ It implements a complete end-to-end data pipeline for stock market data, designe
 
 ### Objective
 
-To design a **scalable, maintainable, and analytics-ready data pipeline** for stock market analysis.
+To design a scalable AI-powered data platform for stock market analytics, combining modern data engineering workflows with LLM-powered financial analysis and RAG capabilities.
 
 ---
 
 ## Architecture
-    +------------------+
-    |   Data Sources   |
-    | (TWSE API)|
-    +--------+---------+
-             |
-             v
-    +------------------+
-    | Data Ingestion   |
-    | (Python Scripts) |
-    +--------+---------+
-             |
-             v
-    +------------------+
-    |  PostgreSQL      |
-    | (Raw Data Layer) |
-    +--------+---------+
-             |
-             v
-    +------------------+
-    | dbt Transformation|
-    | (Data Modeling)  |
-    +--------+---------+
-             |
-             v
-    +------------------+
-    | Analytics Layer  |
-    +------------------+
-             ^
-             |
-    +------------------+
-    |  Apache Airflow  |
-    | (Orchestration)  |
-    +------------------+
+```text
+                +------------------+
+                |   Data Sources   |
+                | (TWSE API / TXT) |
+                +--------+---------+
+                         |
+                         v
+                +------------------+
+                | Data Ingestion   |
+                | (Python Scripts) |
+                +--------+---------+
+                         |
+                         v
+                +------------------+
+                |  PostgreSQL      |
+                |  + pgvector      |
+                +--------+---------+
+                         |
+          +--------------+--------------+
+          |                             |
+          v                             v
++-------------------+        +-------------------+
+| dbt Transformation|        | Embedding Pipeline|
++--------+----------+        +--------+----------+
+         |                             |
+         v                             v
++------------------+         +--------------------+
+| Analytics Layer  |         | RAG Knowledge Base |
++------------------+         +--------------------+
+         ^                             ^
+         |                             |
++------------------+         +---------------------+
+| Apache Airflow   |         | Gemini Embedding API|
++------------------+         +---------------------+
+                         |
+                         v
+                +------------------+
+                | FastAPI Service  |
+                | AI / RAG APIs    |
+                +------------------+
+```
 
 ---
 
@@ -78,15 +109,23 @@ To design a **scalable, maintainable, and analytics-ready data pipeline** for st
 - **Visualization**: Metabase
 - **Data Sources**:  
   - TWSE (Taiwan Stock Exchange)  
+- **Backend API**: FastAPI
+- **LLM**: Gemini API
+- **Vector Database**: pgvector
+- **AI / RAG**: Embedding-based Retrieval-Augmented Generation
 
 ---
 
 ## Data Pipeline
 
 1. Use Airflow DAGs to periodically fetch Taiwan stock market data  
-2. Store raw data in PostgreSQL  
-3. Transform and model data using dbt 
-4. Serve analytical data through Metabase dashboards
+2. Store raw and transformed data in PostgreSQL  
+3. Transform and model data using dbt  
+4. Generate embeddings using Gemini Embedding API  
+5. Store vector embeddings in pgvector  
+6. Provide AI-powered APIs using FastAPI  
+7. Support RAG-based semantic search and question answering  
+8. Serve analytical dashboards through Metabase
 
 ---
 
@@ -252,13 +291,54 @@ stg_stock_prices → stock_ma → stock_indicators
 
 ---
 
+## AI & RAG Features
+
+### AI Stock Summary
+
+The platform integrates Gemini LLM to generate AI-powered stock analysis summaries based on technical indicators.
+
+Features:
+- Trend analysis
+- Risk assessment
+- Short-term market observations
+
+### Embedding Pipeline
+
+The system uses Gemini Embedding API to generate vector embeddings for financial documents and stores them in PostgreSQL with pgvector.
+
+Pipeline:
+txt documents → chunking → embeddings → pgvector
+
+### Semantic Search
+
+The platform supports vector similarity search using pgvector for semantic retrieval.
+
+### RAG Chat API
+
+FastAPI provides RAG-based APIs that:
+1. Convert user questions into embeddings
+2. Retrieve similar documents using pgvector
+3. Generate contextual answers using Gemini
+
+### AI Summary Cache
+
+Generated AI summaries are cached in PostgreSQL to:
+- Reduce API costs
+- Improve response latency
+- Minimize repeated LLM requests
+
 ## Features
 
-- Automated data ingestion (Airflow)
-- Reproducible data transformations (dbt)
-- Real-time visualization dashboards (Metabase) 
-- Integrated technical analysis indicators
-- Flexible filtering by stock and date 
+- Automated ETL pipelines with Apache Airflow
+- Reproducible data transformations using dbt
+- Technical indicator analysis (MA / Golden Cross / Trend)
+- AI-powered stock summaries using Gemini
+- Embedding pipeline with pgvector
+- Semantic vector search
+- RAG-based stock Q&A APIs
+- AI summary caching with PostgreSQL
+- FastAPI-based backend services
+- Real-time analytical dashboards with Metabase
 
 ---
 
@@ -292,7 +372,9 @@ http://localhost:3000
 
 ## Future Improvements
 
-* Add more technical indicators
-* Support additional stock markets
-* Deploy to cloud platforms (GCP / AWS)
-* Build an API service (e.g., FastAPI)
+* Support PDF and financial report ingestion for RAG
+* Add real-time streaming pipelines using Kafka
+* Integrate multi-agent financial workflows
+* Add multilingual financial analysis support
+* Deploy AI services to cloud infrastructure (GCP / AWS)
+* Add monitoring and observability for AI pipelines
