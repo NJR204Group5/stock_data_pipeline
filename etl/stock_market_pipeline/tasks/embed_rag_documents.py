@@ -41,6 +41,15 @@ def run():
 
         with conn.cursor() as cur:
             for file_path in RAG_DOCS_DIR.glob("*.txt"):
+                # 先刪除舊資料
+                cur.execute(
+                    """
+                    DELETE FROM rag_documents
+                    WHERE source_name = %s
+                    """,
+                    (file_path.name,)
+                )
+
                 text = file_path.read_text(
                     encoding="utf-8"
                 )
