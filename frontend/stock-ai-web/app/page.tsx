@@ -6,6 +6,7 @@ export default function Home() {
 
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function handleAsk() {
@@ -29,6 +30,7 @@ export default function Home() {
       const data = await response.json();
       console.log(data);
       setAnswer(data.answer);
+      setDocs(data.retrieved_docs || []);
     } catch (error) {
       console.error(error);
       setAnswer("Error calling API");
@@ -40,14 +42,14 @@ export default function Home() {
   return (
     <main className="min-h-screen p-10">
 
-      <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-5xl font-bold mb-10">
         AI Stock Assistant
       </h1>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-6">
 
         <input
-          className="border p-2 w-full"
+          className="border p-4 w-full text-2xl rounded"
           placeholder="Ask something..."
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -55,7 +57,7 @@ export default function Home() {
 
         <button
           onClick={handleAsk}
-          className="bg-black text-white px-4 py-2"
+          className="bg-white text-black px-6 py-4 rounded font-bold"
         >
           Ask
         </button>
@@ -63,19 +65,62 @@ export default function Home() {
       </div>
 
       {loading && (
-        <p>Loading...</p>
+        <p className="text-xl">
+          Loading...
+        </p>
       )}
 
       {answer && (
-        <div className="border p-4 rounded">
-          <h2 className="font-bold mb-2">
+        <div className="border p-6 rounded mt-4">
+
+          <h2 className="text-3xl font-bold mb-6">
             AI Answer
           </h2>
 
-          <p>{answer}</p>
+          <p className="text-2xl leading-relaxed">
+            {answer}
+          </p>
+
         </div>
       )}
 
+      {docs.length > 0 && (
+        <div className="border p-6 rounded mt-6">
+
+          <h2 className="text-3xl font-bold mb-6">
+            Retrieved Documents
+          </h2>
+
+          <div className="space-y-4">
+
+            {docs.map((doc, index) => (
+
+              <div
+                key={index}
+                className="border p-4 rounded"
+              >
+
+                <p className="text-sm opacity-70 mb-2">
+                  Source: {doc.source_name}
+                </p>
+
+                <p className="text-lg leading-relaxed">
+                  {doc.chunk_text}
+                </p>
+
+                <p className="text-sm opacity-70 mt-3">
+                  Distance: {doc.distance}
+                </p>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+      )}
+      
     </main>
   );
 }
