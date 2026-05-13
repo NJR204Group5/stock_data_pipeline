@@ -10,7 +10,7 @@ from services.stock_service import (
     get_stock_context,
 )
 from fastapi.encoders import jsonable_encoder
-from services.llm_service import generate_stock_summary, answer_stock_question
+from services.llm_service import generate_stock_summary, answer_stock_question, get_or_create_stock_summary
 
 router = APIRouter(
     prefix="/stocks",
@@ -48,10 +48,11 @@ def stock_summary(stock_code: str):
 
     if stock_data is None:
         raise HTTPException(status_code=404, detail="Stock not found")
-    summary = generate_stock_summary(stock_data)
+    summary = get_or_create_stock_summary(stock_data)
 
     return {
         "stock_code": stock_code,
+        "trade_date": stock_data["trade_date"],
         "ai_summary": summary,
     }
 

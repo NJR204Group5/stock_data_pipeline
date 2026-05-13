@@ -2,6 +2,7 @@ import os
 
 from pathlib import Path
 from dotenv import load_dotenv
+from database import get_connection
 
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
@@ -22,6 +23,78 @@ for m in genai.list_models():
     print(m.name)
 
 model = genai.GenerativeModel("models/gemini-flash-lite-latest")
+
+def get_cached_summary(stock_code: str, trade_date):
+    sql = """
+        SELECT ai_summary
+        FROM stock_ai_summaries
+        WHERE stock_code = %s
+        AND trade_date = %s
+        LIMIT 1
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    stock_code,
+                    trade_date
+                )
+            )
+            row = cur.fetchone()
+
+    if row:
+        return row[0]
+
+    return None
+
+def save_summary_to_db(stock_code: str, trade_date, ai_summary: str):
+    sql = """
+        INSERT INTO stock_ai_summaries (
+            stock_code,
+            trade_date,
+            ai_summary
+        )
+        VALUES (%s, %s, %s)
+        ON CONFLICT (stock_code, trade_date)
+        DO NOTHING
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                (
+                    stock_code,
+                    trade_date,
+                    ai_summary
+                )
+            )
+        conn.commit()
+
+def get_or_create_stock_summary(stock_data: dict):
+    stock_code = stock_data["stock_code"]
+    trade_date = stock_data["trade_date"]
+
+    cached_summary = get_cached_summary(
+        stock_code=stock_code,
+        trade_date=trade_date
+    )
+
+    if cached_summary:
+        print("Using cached AI summary")
+        return cached_summary
+
+    print("Generating new AI summary")
+    summary = generate_stock_summary(stock_data)
+    save_summary_to_db(
+        stock_code=stock_code,
+        trade_date=trade_date,
+        ai_summary=summary
+    )
+
+    return summary
 
 def generate_stock_summary(stock_data: dict):
     prompt = f"""

@@ -16,7 +16,8 @@ SQL_FILES = [
     "schema.sql",
     "stocks.sql",
     "stock_prices.sql",
-    "rag_documents.sql"
+    "rag_documents.sql",
+    "stock_ai_summaries.sql",
 ]
 
 def run():
