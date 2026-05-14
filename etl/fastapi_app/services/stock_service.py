@@ -83,3 +83,63 @@ def get_stock_context(stock_code: str, limit: int = 30):
             cur.execute(sql, (stock_code, limit))
             rows = cur.fetchall()
     return [dict(row) for row in rows]
+
+def find_stock_by_question(question: str):
+    sql = """
+        SELECT stock_code, stock_name
+        FROM stocks
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            rows = cur.fetchall()
+
+    for row in rows:
+        stock_code = row[0]
+        stock_name = row[1]
+
+        if stock_name in question:
+            return stock_code
+
+    return None
+
+def get_latest_stock_indicator(stock_code: str):
+    sql = """
+        SELECT
+            stock_code,
+            trade_date,
+            close,
+            ma5,
+            ma20,
+            ma60,
+            trend_type,
+            cross_signal,
+            daily_return,
+            cumulative_return
+        FROM stock_indicators
+        WHERE stock_code = %s
+        ORDER BY trade_date DESC
+        LIMIT 1
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (stock_code,))
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "stock_code": row[0],
+        "trade_date": str(row[1]),
+        "close": row[2],
+        "ma5": row[3],
+        "ma20": row[4],
+        "ma60": row[5],
+        "trend_type": row[6],
+        "cross_signal": row[7],
+        "daily_return": row[8],
+        "cumulative_return": row[9],
+    }

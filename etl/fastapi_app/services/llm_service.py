@@ -154,26 +154,53 @@ def answer_stock_question(question: str, stock_context: list[dict]):
     except Exception as e:
         return f"LLM error: {str(e)}"
 
-def answer_with_context(question: str, context_docs: list[dict]):
-    context_text = "\n\n".join(
-        doc["chunk_text"] for doc in context_docs
+def answer_with_context(question, stock_data, context_docs):
+    technical_context = ""
+
+    if stock_data:
+        technical_context = f"""
+            Stock Code: {stock_data['stock_code']}
+            Stock Name: {stock_data['stock_name']}
+
+            Close Price: {stock_data['close']}
+
+            MA5: {stock_data['ma5']}
+            MA20: {stock_data['ma20']}
+            MA60: {stock_data['ma60']}
+
+            Trend Type: {stock_data['trend_type']}
+            Cross Signal: {stock_data['cross_signal']}
+
+            Daily Return: {stock_data['daily_return']}
+            Cumulative Return: {stock_data['cumulative_return']}
+            """
+
+    rag_context = "\n".join(
+        [
+            doc["chunk_text"]
+            for doc in context_docs
+        ]
     )
 
     prompt = f"""
-    You are an AI stock assistant.
+        You are an AI stock assistant.
 
-    Answer the user's question based on the context below.
+        Please answer the question using:
 
-    Try your best to provide a concise analysis.
+        1. Technical stock indicators
+        2. Retrieved RAG documents
 
-    Context:
-    {context_text}
+        Technical Analysis:
+        {technical_context}
 
-    Question:
-    {question}
+        RAG Documents:
+        {rag_context}
 
-    Please answer in Traditional Chinese.
-    """
+        Question:
+        {question}
+
+        Please answer in Traditional Chinese.
+        """
 
     response = model.generate_content(prompt)
 
