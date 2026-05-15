@@ -12,7 +12,7 @@ env_path = Path(__file__).resolve().parents[3] / ".env"
 load_dotenv(dotenv_path=env_path)
 
 print("ENV PATH:", env_path)
-print("GEMINI API KEY:", os.getenv("GEMINI_API_KEY"))
+print(f"GEMINI_API_KEY loaded: {bool(os.getenv('GEMINI_API_KEY'))}")
 
 genai.configure(
     api_key=os.getenv("GEMINI_API_KEY"),
