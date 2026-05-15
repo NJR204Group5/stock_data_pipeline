@@ -8,6 +8,7 @@ from services.stock_service import (
     get_stock_indicators,
     get_latest_stock_signal,
     get_stock_context,
+    get_stock_chart_data,
 )
 from fastapi.encoders import jsonable_encoder
 from services.llm_service import generate_stock_summary, answer_stock_question, get_or_create_stock_summary
@@ -86,3 +87,7 @@ def stock_chat(request: ChatRequest):
         "question": request.question,
         "answer": answer
     }
+
+@router.get("/{stock_code}/chart")
+def stock_chart(stock_code: str, limit: int = 60):
+    return get_stock_chart_data(stock_code, limit)

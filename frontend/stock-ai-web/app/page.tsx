@@ -1,22 +1,82 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type StockData = {
+  stock_code: string;
+  stock_name: string;
+  trade_date: string;
+  close: number;
+  ma5: number;
+  ma20: number;
+  ma60: number;
+  trend_type: string;
+  cross_signal: string;
+  daily_return: number;
+  cumulative_return: number;
+};
+
+type RetrievedDoc = {
+  source_name: string;
+  chunk_text: string;
+  distance: number;
+};
+
+type ChartData = {
+  trade_date: string;
+  close: number;
+  ma5: number | null;
+  ma20: number | null;
+  ma60: number | null;
+};
 
 export default function Home() {
-
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [docs, setDocs] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [stockData, setStockData] = useState<StockData | null>(null);
+  const [docs, setDocs] = useState<RetrievedDoc[]>([]);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [stockData, setStockData] = useState<any>(null);
+
+  async function fetchChart(stockCode: string) {
+    const response = await fetch(
+      `http://localhost:8000/stocks/${stockCode}/chart?limit=60`
+    );
+
+    const data = await response.json();
+
+    setChartData(data);
+  }
 
   async function handleAsk() {
-    if (!question) return;
+    if (!question.trim()) return;
+
+    const userMessage: Message = {
+      role: "user",
+      content: question,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/rag/chat",
+        "http://localhost:8000/rag/chat",
         {
           method: "POST",
           headers: {
@@ -29,13 +89,29 @@ export default function Home() {
       );
 
       const data = await response.json();
-      console.log(data);
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: data.answer,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
       setStockData(data.stock_data);
-      setAnswer(data.answer);
       setDocs(data.retrieved_docs || []);
+
+      if (data.stock_data?.stock_code) {
+        await fetchChart(data.stock_data.stock_code);
+      }
+
+      setQuestion("");
     } catch (error) {
       console.error(error);
-      setAnswer("Error calling API");
+
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "Error calling API",
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
@@ -43,13 +119,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen p-10">
-
       <h1 className="text-5xl font-bold mb-10">
         AI Stock Assistant
       </h1>
 
       <div className="flex gap-2 mb-6">
-
         <input
           className="border p-4 w-full text-2xl rounded"
           placeholder="Ask something..."
@@ -63,26 +137,36 @@ export default function Home() {
         >
           Ask
         </button>
-
       </div>
 
       {loading && (
-        <p className="text-xl">
-          Loading...
+        <p className="text-xl mb-4">
+          Analyzing technical indicators and searching documents...
         </p>
       )}
 
-      {answer && (
-        <div className="border p-6 rounded mt-4">
-          <h2 className="text-3xl font-bold mb-6">
-            AI Answer
-          </h2>
+      <div className="space-y-4 mt-6">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={
+              message.role === "user"
+                ? "border p-4 rounded bg-gray-900"
+                : "border p-6 rounded"
+            }
+          >
+            <p className="font-bold mb-2">
+              {message.role === "user" ? "You" : "AI Answer"}
+            </p>
 
-          <p className="text-2xl leading-relaxed">
-            {answer}
-          </p>
-        </div>
-      )}
+            <div className="text-xl leading-relaxed">
+              <ReactMarkdown>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {stockData && (
         <div className="border p-6 rounded mt-6">
@@ -105,6 +189,57 @@ export default function Home() {
         </div>
       )}
 
+      {chartData.length > 0 && (
+        <div className="border p-6 rounded mt-6">
+          <h2 className="text-3xl font-bold mb-6">
+            Price & Moving Average Chart
+          </h2>
+
+          <div className="w-full h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="trade_date" />
+                <YAxis />
+                <Tooltip />
+
+                <Line
+                  type="monotone"
+                  dataKey="close"
+                  name="Close"
+                  stroke="#ffffff"
+                  dot={false}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="ma5"
+                  name="MA5"
+                  stroke="#22c55e"
+                  dot={false}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="ma20"
+                  name="MA20"
+                  stroke="#3b82f6"
+                  dot={false}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="ma60"
+                  name="MA60"
+                  stroke="#f97316"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {docs.length > 0 && (
         <div className="border p-6 rounded mt-6">
           <h2 className="text-3xl font-bold mb-6">
@@ -117,7 +252,6 @@ export default function Home() {
                 key={index}
                 className="border p-4 rounded"
               >
-
                 <p className="text-sm opacity-70 mb-2">
                   Source: {doc.source_name}
                 </p>

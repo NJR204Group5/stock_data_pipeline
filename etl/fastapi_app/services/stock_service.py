@@ -143,3 +143,36 @@ def get_latest_stock_indicator(stock_code: str):
         "daily_return": row[8],
         "cumulative_return": row[9],
     }
+
+def get_stock_chart_data(stock_code: str, limit: int = 60):
+    sql = """
+        SELECT
+            trade_date,
+            close,
+            ma5,
+            ma20,
+            ma60
+        FROM stock_indicators
+        WHERE stock_code = %s
+        ORDER BY trade_date DESC
+        LIMIT %s
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (stock_code, limit))
+            rows = cur.fetchall()
+
+    data = [
+        {
+            "trade_date": str(row[0]),
+            "close": float(row[1]),
+            "ma5": float(row[2]) if row[2] else None,
+            "ma20": float(row[3]) if row[3] else None,
+            "ma60": float(row[4]) if row[4] else None,
+        }
+        for row in rows
+    ]
+
+    return list(reversed(data))
+
