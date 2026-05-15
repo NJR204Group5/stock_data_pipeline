@@ -6,3 +6,4 @@ certifi
 urllib3
 pgvector
 google-generativeai
+fugle-marketdata

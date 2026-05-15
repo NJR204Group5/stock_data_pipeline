@@ -280,6 +280,7 @@ def fetch_all_stocks_history(debug=False):
             cur.execute("""
                 SELECT stock_code, stock_name, listed_date
                 FROM stocks
+                WHERE is_price_supported = TRUE
             """)
             rows = cur.fetchall()
 

@@ -80,8 +80,10 @@ x-airflow-common:
     DB_NAME: ${DB_NAME}
     DB_USER: ${DB_USER}
     DB_PASSWORD: ${DB_PASSWORD}
-    # 新增 Google api key
+    # 新增 Genimi api key
     GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    # 新增 FUGLE API KEY
+    FUGLE_API_KEY: ${FUGLE_API_KEY}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./etl:/opt/airflow/etl
