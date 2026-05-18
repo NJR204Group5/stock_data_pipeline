@@ -13,14 +13,17 @@ from services.stock_service import (
 from fastapi.encoders import jsonable_encoder
 from services.llm_service import generate_stock_summary, answer_stock_question, get_or_create_stock_summary
 
+from schemas.stock_schema import StockResponse
+from typing import List
+
 router = APIRouter(
     prefix="/stocks",
     tags=["stocks"],
 )
 
-@router.get("")
+@router.get("", response_model=List[StockResponse])
 def list_stocks():
-    return jsonable_encoder(get_all_stocks())
+    return get_all_stocks()
 
 @router.get("/{stock_code}/prices")
 def stock_prices(
