@@ -57,10 +57,10 @@ To design a scalable AI-powered data platform for stock market analytics, combin
 
 ## Architecture
 ```text
-                +------------------+
-                |   Data Sources   |
-                | (TWSE API / TXT) |
-                +--------+---------+
+          +-----------------------------+
+          |        Data Sources         |
+          | (TWSE / TPEx / Fugle / TXT) |
+          +--------------+--------------+
                          |
                          v
                 +------------------+
@@ -108,7 +108,9 @@ To design a scalable AI-powered data platform for stock market analytics, combin
 - **Database**: PostgreSQL
 - **Visualization**: Metabase
 - **Data Sources**:  
-  - TWSE (Taiwan Stock Exchange)  
+  - TWSE OpenAPI
+  - TPEx OpenAPI
+  - Fugle Market Data API
 - **Backend API**: FastAPI
 - **LLM**: Gemini API
 - **Vector Database**: pgvector
@@ -126,6 +128,15 @@ To design a scalable AI-powered data platform for stock market analytics, combin
 6. Provide AI-powered APIs using FastAPI  
 7. Support RAG-based semantic search and question answering  
 8. Serve analytical dashboards through Metabase
+
+### Incremental Refresh Strategy
+
+The historical ingestion pipeline uses an incremental refresh strategy:
+
+- Historical completed months are automatically skipped
+- Current month data is automatically refreshed
+- Recent market data can be safely re-fetched using PostgreSQL upsert logic
+- Exponential backoff is applied for API rate-limit handling
 
 ---
 
@@ -327,6 +338,15 @@ Generated AI summaries are cached in PostgreSQL to:
 - Improve response latency
 - Minimize repeated LLM requests
 
+## ETL Reliability Features
+
+- Incremental monthly refresh strategy
+- Exponential backoff retry handling
+- API rate limit protection
+- Missing market data detection
+- Idempotent PostgreSQL upsert ingestion
+- Automatic current-month market refresh
+
 ## Features
 
 - Automated ETL pipelines with Apache Airflow
@@ -334,10 +354,15 @@ Generated AI summaries are cached in PostgreSQL to:
 - Technical indicator analysis (MA / Golden Cross / Trend)
 - AI-powered stock summaries using Gemini
 - Embedding pipeline with pgvector
+- Hybrid RAG-based stock analysis
+- Technical indicator enhanced AI responses
+- Incremental financial ETL pipelines
+- Fugle-based historical market ingestion
 - Semantic vector search
 - RAG-based stock Q&A APIs
 - AI summary caching with PostgreSQL
 - FastAPI-based backend services
+- AI-powered frontend built with Next.js
 - Real-time analytical dashboards with Metabase
 
 ---
@@ -367,14 +392,3 @@ dbt run
 ```text
 http://localhost:3000
 ```
-
----
-
-## Future Improvements
-
-* Support PDF and financial report ingestion for RAG
-* Add real-time streaming pipelines using Kafka
-* Integrate multi-agent financial workflows
-* Add multilingual financial analysis support
-* Deploy AI services to cloud infrastructure (GCP / AWS)
-* Add monitoring and observability for AI pipelines
