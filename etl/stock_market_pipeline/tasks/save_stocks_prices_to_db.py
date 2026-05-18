@@ -9,7 +9,7 @@ import urllib3
 import re
 import time
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from stock_market_pipeline.config import HEADERS
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -164,17 +164,27 @@ def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=Fa
                 month_end = month_start + pd.offsets.MonthEnd(0)
 
                 cur.execute("""
-                    SELECT COUNT(*) FROM stock_prices
+                    SELECT MAX(trade_date)
+                    FROM stock_prices
                     WHERE stock_code = %s
                     AND trade_date BETWEEN %s AND %s
                 """, (stock_code, month_start, month_end))
 
-                count = cur.fetchone()[0]
+                max_trade_date = cur.fetchone()[0]
 
-                if count > 0:
-                    if debug:
-                        print(f"{stock_code} {year}/{month:02d} DB 已有 {count} 筆資料，跳過")
-
+                is_current_month = (
+                    year == current.year
+                    and month == current.month
+                )
+                if (
+                    max_trade_date is not None
+                    and max_trade_date >= (month_end - timedelta(days=3)).date()
+                    and not is_current_month
+                ):
+                    print(
+                        f"{stock_code} {year}/{month:02d} "
+                        f"最新資料已到 {max_trade_date}，跳過"
+                    )
                     month += 1
                     if month > 12:
                         month = 1
@@ -203,6 +213,10 @@ def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=Fa
                 last_retry = None
 
                 if isinstance(result, pd.DataFrame):
+                    print(
+                        result[["日期", "收盤價"]].tail()
+                    )
+
                     # 加上股票代碼與名稱欄位
                     result.insert(0, "股票代碼", stock_code)
                     result.insert(1, "股票名稱", stock_name)
@@ -262,6 +276,7 @@ def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=Fa
                     conn.commit()
                     print(f"Current Time: {datetime.now()}, Stock: {stock_code}{stock_name}, year/month: {year}/{month:02d} Done!")
                 else:
+                    print(f"{stock_code} {year}/{month:02d} result type: {type(result)}, value: {result}")
                     print(f"Current Time: {datetime.now()}, Stock: {stock_code}{stock_name}, year/month: {year}/{month:02d} Failed!")
 
                     # 下一個月
