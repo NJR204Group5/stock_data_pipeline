@@ -281,6 +281,8 @@ def fetch_all_stocks_history(debug=False):
                 SELECT stock_code, stock_name, listed_date
                 FROM stocks
                 WHERE is_price_supported = TRUE
+                AND delisted_date IS NULL
+                AND listed_date IS NOT NULL
             """)
             rows = cur.fetchall()
 
