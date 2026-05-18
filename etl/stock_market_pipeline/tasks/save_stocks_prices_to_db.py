@@ -39,6 +39,12 @@ def fetch_month_data(stock, stock_code, year, month, debug=False):
         except Exception as e:
             error_text = str(e)
 
+            if "Resource Not Found" in error_text:
+                print(
+                    f"{stock_code} {year}/{month:02d} "
+                    f"no market data"
+                )
+                return pd.DataFrame()
             if "Rate limit exceeded" in error_text:
                 wait_seconds = 2 ** attempt
                 print(
@@ -142,7 +148,7 @@ def fetch_full_history(stock, stock_code, stock_name, start_year, start_month, d
 
                 result = fetch_month_data(stock, stock_code, year, month, debug=debug)
 
-                if isinstance(result, pd.DataFrame):
+                if isinstance(result, pd.DataFrame) and not result.empty:
                     if debug:
                         print(result[["日期", "收盤價"]].tail())
 
@@ -201,6 +207,11 @@ def fetch_full_history(stock, stock_code, stock_name, start_year, start_month, d
                     cur.executemany(sql, data)
                     conn.commit()
                     print(f"Current Time: {datetime.now()}, Stock: {stock_code}{stock_name}, year/month: {year}/{month:02d} Done!")
+                elif isinstance(result, pd.DataFrame) and result.empty:
+                    print(
+                        f"{stock_code} {year}/{month:02d} "
+                        f"empty market data"
+                    )
                 else:
                     print(f"{stock_code} {year}/{month:02d} result type: {type(result)}, value: {result}")
                     print(f"Current Time: {datetime.now()}, Stock: {stock_code}{stock_name}, year/month: {year}/{month:02d} Failed!")
