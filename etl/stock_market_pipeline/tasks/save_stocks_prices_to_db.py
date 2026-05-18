@@ -1,20 +1,11 @@
 import os
 import random
-import certifi
 import psycopg
-import requests
 import pandas as pd
-import pandas_market_calendars as mcal
-import urllib3
-import re
 import time
 
 from datetime import datetime, timedelta
-from stock_market_pipeline.config import HEADERS
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-tw_calendar = mcal.get_calendar("XTAI") # XTAI = Taiwan Stock Exchange
+from stock_market_pipeline.services.fugle_service import get_fugle_stock_client
 
 # PostgreSQL 連線設定
 DB_CONFIG = {
@@ -25,134 +16,92 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD")
 }
 
-def parse_retry_date_from_stat(stat: str):
-    # 從 TWSE stat 字串中解析「請重新查詢」的日期，回傳 (year, month)（西元），解析不到回傳 None
-    if not stat:
-        return None
-    if "重新查詢" not in stat:
-        return None
+def fetch_month_data(stock, stock_code, year, month, debug=False):
+    month_start = datetime(year, month, 1)
+    month_end = month_start + pd.offsets.MonthEnd(0)
 
-    # 抓民國年月日
-    m = re.search(r'(\d+)年(\d+)月(\d+)日', stat)
-    if not m:
-        return None
-    roc_year, month, day = map(int, m.groups())
-    year = roc_year + 1911
+    from_date = month_start.strftime("%Y-%m-%d")
+    to_date = month_end.strftime("%Y-%m-%d")
 
-    return f"{year:04d}-{month:02d}-{day:02d}"
-
-def fetch_month_data(stock_code, year, month, retry=5, debug=False):
-    # 抓取某股票某年月資料，成功回傳 DataFrame，否則回傳 None
-    url = (
-        "https://www.twse.com.tw/exchangeReport/STOCK_DAY"
-        f"?response=json&date={year}{month:02d}01&stockNo={stock_code}"
-    )
-
-    for attempt in range(1, retry + 1):
+    for attempt in range(5):
         try:
-            time.sleep(0.5)
+            result = stock.historical.candles(
+                **{
+                    "symbol": stock_code,
+                    "from": from_date,
+                    "to": to_date,
+                    "fields": "open,high,low,close,volume,turnover,change",
+                    "timeframe": "D",
+                    "sort": "asc",
+                }
+            )
+            break
+        except Exception as e:
+            error_text = str(e)
 
-            # res = requests.get(url, headers=HEADERS, timeout=(10, 40), verify=certifi.where())
-            res = requests.get(url, headers=HEADERS, timeout=(10, 40), verify=False)
-            res.raise_for_status()
-            data = res.json()
-            if debug:
-                print(f"[DEBUG] {stock_code} {year}/{month:02d} → {data}")
-        except requests.exceptions.ReadTimeout:
-            print(f"[Timeout] {stock_code} {year}/{month:02d} 第 {attempt}/{retry}")
-        except requests.exceptions.ConnectTimeout:
-            print(f"[ConnectTimeout] {stock_code} {year}/{month:02d} 第 {attempt}/{retry}")
-            # time.sleep(3 + random.random() * 2)
-            # continue
-        except requests.exceptions.HTTPError as e:
-            print(f"[HTTPError] {e}")
-            break  # 4xx 通常沒必要重試
-        except requests.exceptions.RequestException as e:
-            print(f"[RequestError] {e}")
-        except ValueError:
-            print(f"[JSON解析失敗] {stock_code} {year}/{month:02d}")
-        else:
-            # 成功拿到 data
-            stat = data.get("stat", "")
-            total = data.get("total", 0)
-            rows = data.get("data")
+            if "Rate limit exceeded" in error_text:
+                wait_seconds = 2 ** attempt
+                print(
+                    f"{stock_code} {year}/{month:02d} rate limited, "
+                    f"retry in {wait_seconds}s..."
+                )
+                time.sleep(wait_seconds)
+                continue
 
-            if stat == "OK" and rows:
-                # 建立 DataFrame
-                df = pd.DataFrame(data["data"], columns=[c.strip() for c in data["fields"]])
-
-                # 民國年轉西元
-                try:
-                    date_parts = df["日期"].astype(str).str.strip().str.split("/", expand=True)
-                    date_df = pd.DataFrame({
-                        "year": date_parts[0].astype(int) + 1911,
-                        "month": date_parts[1].astype(int),
-                        "day": date_parts[2].astype(int),
-                    })
-                    df["日期"] = pd.to_datetime(date_df)
-                except Exception as e:
-                    print(f"日期轉換錯誤 {stock_code} {year}/{month:02d}: {e}")
-                    return None
-
-                # 數值欄位
-                num_cols = ["成交股數", "成交金額", "開盤價", "最高價", "最低價", "收盤價", "成交筆數"]
-                for col in num_cols:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col].str.replace(",", ""), errors="coerce")
-
-                return df
-
-            # API 不支援的時間（不用看中文字）
-            if total == 0 and ("重新查詢" in stat or "查詢日期小於" in stat):
-                retry_date = parse_retry_date_from_stat(stat)
-                if retry_date:
-                    # 確保回傳 datetime
-                    if isinstance(retry_date, str):
-                        retry_date = pd.to_datetime(retry_date)
-                    return {
-                        "type": "RETRY_WITH_NEW_DATE",
-                        "date": retry_date
-                    }
-
-            # 沒資料
-            if "沒有符合條件" in stat:
-                return None
-
-            # 其他情況重試
-            print(f"[異常狀態] {stat}")
-
-        # 進入重試
-        sleep_time = min(2 ** attempt, 30) + random.random() # 指數避退
-        time.sleep(sleep_time)
-
-    print(f"[失敗] {stock_code} {year}/{month:02d} 超過最大重試")
-    return None
-
-def get_valid_start_year_month(stock_code, start_year, start_month):
-    # 嘗試抓指定年月的資料，如果TWSE要求改查更早日期，就回傳datetime物件
-    result = fetch_month_data(stock_code, start_year, start_month)
-    if isinstance(result, dict) and result.get("type") == "RETRY_WITH_NEW_DATE":
-        retry_date = result.get("date")
-        return retry_date
-    return None
-
-def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=False):
-    if start_year is None:
-        print(f"找不到 {stock_code}{stock_name} 的任何歷史資料")
+            print(f"{stock_code} {year}/{month:02d} Fugle failed: {e}")
+            return None
+    else:
+        print(f"{stock_code} {year}/{month:02d} failed after retries")
         return None
 
-    start_date = get_valid_start_year_month(
-        stock_code,
-        start_year,
-        start_month
+    data = result.get("data", [])
+
+    if not data:
+        print(f"{stock_code} {year}/{month:02d} Fugle no data")
+        return None
+
+    df = pd.DataFrame(data)
+
+    df = df.rename(
+        columns={
+            "date": "日期",
+            "open": "開盤價",
+            "high": "最高價",
+            "low": "最低價",
+            "close": "收盤價",
+            "volume": "成交股數",
+            "turnover": "成交金額",
+            "change": "漲跌價差",
+        }
     )
-    print(f"API 要求改查 {start_date}")
-    if start_date is None:
-        print(f"{stock_code} 找不到有效起始日期")
+
+    df["成交筆數"] = None
+    df["註記"] = None
+
+    if debug:
+        print(df[["日期", "收盤價"]].tail())
+
+    return df
+
+def fetch_full_history(stock, stock_code, stock_name, start_year, start_month, debug=False):
+    if start_year is None or start_month is None:
+        print(f"找不到 {stock_code}{stock_name} 的上市年月")
         return None
+
+    start_date = datetime(
+        int(start_year),
+        int(start_month),
+        1
+    )
+
+    min_fugle_start = datetime(2010, 1, 1)
+
+    if start_date < min_fugle_start:
+        start_date = min_fugle_start
+
+    print(f"API 要求改查 {start_date}")
 
     current = datetime.now()
-    last_retry = None
 
     print(f"開始抓取 股票代碼: {stock_code}{stock_name} 全部歷史股價...")
     year, month = start_date.year, start_date.month
@@ -191,38 +140,15 @@ def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=Fa
                         year += 1
                     continue
 
-                result = fetch_month_data(stock_code, year, month, debug=debug)
-                # API 要求改查其他日期
-                if isinstance(result, dict) and result.get("type") == "RETRY_WITH_NEW_DATE":
-                    retry_dt = result["date"]
-                    if retry_dt is None:
-                        print(f"{stock_code} API 返回日期為 None，跳過")
-                        month += 1
-                        continue
-                    year, month = retry_dt.year, retry_dt.month
-
-                    if last_retry == (year, month):
-                        print(f"API 重複要求 {year}/{month:02d}，跳過避免死循環")
-                        month += 1
-                        continue
-                    last_retry = (year, month)
-                    year, month = year, month
-                    print(f"API 要求改查 {year}/{month:02d}")
-                    continue
-
-                last_retry = None
+                result = fetch_month_data(stock, stock_code, year, month, debug=debug)
 
                 if isinstance(result, pd.DataFrame):
-                    print(
-                        result[["日期", "收盤價"]].tail()
-                    )
+                    if debug:
+                        print(result[["日期", "收盤價"]].tail())
 
                     # 加上股票代碼與名稱欄位
                     result.insert(0, "股票代碼", stock_code)
                     result.insert(1, "股票名稱", stock_name)
-                    result = result.replace("--", None)
-                    result = result.replace(",", "", regex=True)
-                    result["漲跌價差"] = result["漲跌價差"].str.replace("X", "", regex=False)
                     result["日期"] = pd.to_datetime(result["日期"])
                     sql = """
                         INSERT INTO stock_prices
@@ -285,7 +211,7 @@ def fetch_full_history(stock_code, stock_name, start_year, start_month, debug=Fa
                     month = 1
                     year += 1
 
-                time.sleep(1.5 + random.uniform(0.5, 1.5))
+                time.sleep(1.0 + random.uniform(0.5, 1.0))
     print(f"{stock_code}{stock_name} 全部歷史資料寫入完成")
 
 def fetch_all_stocks_history(debug=False):
@@ -316,9 +242,10 @@ def fetch_all_stocks_history(debug=False):
     stock_list = list(df[["stock_code", "stock_name", "上市年", "上市月"]].itertuples(index=False, name=None))
     print(f"證券代號, 證券名稱和上市年月轉換完成! 共 {len(stock_list)} 檔股票")
 
+    stock = get_fugle_stock_client()
     for stock_code, stock_name, year, month in stock_list:
         try:
-            fetch_full_history(stock_code, stock_name, year, month, debug)
+            fetch_full_history(stock, stock_code, stock_name, year, month, debug)
         except Exception as e:
             print(f"{stock_code} 整體失敗: {e}")
 

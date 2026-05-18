@@ -3,10 +3,9 @@ from datetime import datetime
 
 import psycopg
 
-from fugle_marketdata import RestClient
 from stock_market_pipeline.fetch_twse_stocks import fetch_twse_stocks
 from stock_market_pipeline.fetch_tpex_stocks import fetch_tpex_stocks
-from dotenv import load_dotenv
+from stock_market_pipeline.services.fugle_service import get_fugle_stock_client
 
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
@@ -15,11 +14,6 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),
 }
-
-load_dotenv()
-
-client = RestClient(api_key=os.getenv("FUGLE_API_KEY"))
-stock_client = client.stock
 
 def parse_date(value):
     if not value:
@@ -70,6 +64,7 @@ def upsert_stocks(stocks):
             industry = EXCLUDED.industry,
             delisted_date = EXCLUDED.delisted_date,
             market = EXCLUDED.market,
+            is_price_supported = EXCLUDED.is_price_supported,
             updated_at = CURRENT_TIMESTAMP
     """
 
@@ -93,7 +88,7 @@ def upsert_stocks(stocks):
 
         conn.commit()
 
-def validate_stock(stock_code: str):
+def validate_stock(stock_client, stock_code: str):
     try:
         stock_client.intraday.quote(
             symbol=stock_code
@@ -112,8 +107,10 @@ def run():
     print(f"TPEx stocks: {len(tpex_stocks)}")
     print(f"Total stocks: {len(stocks)}")
 
+    stock_client = get_fugle_stock_client()
+
     for stock in stocks:
-        stock["is_price_supported"] = validate_stock(stock["stock_code"])
+        stock["is_price_supported"] = validate_stock(stock_client, stock["stock_code"])
 
     upsert_stocks(stocks)
 
