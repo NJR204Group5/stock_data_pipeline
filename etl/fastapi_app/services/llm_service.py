@@ -1,14 +1,12 @@
 import os
-
 from pathlib import Path
 from dotenv import load_dotenv
 from database import get_connection
-
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted
+from repositories.summary_repository import SummaryRepository
 
 env_path = Path(__file__).resolve().parents[3] / ".env"
-
 load_dotenv(dotenv_path=env_path)
 
 print("ENV PATH:", env_path)
@@ -18,60 +16,13 @@ genai.configure(
     api_key=os.getenv("GEMINI_API_KEY"),
 )
 
-# 可使用的 model
-for m in genai.list_models():
-    print(m.name)
-
 model = genai.GenerativeModel("models/gemini-flash-lite-latest")
 
 def get_cached_summary(stock_code: str, trade_date):
-    sql = """
-        SELECT ai_summary
-        FROM stock_ai_summaries
-        WHERE stock_code = %s
-        AND trade_date = %s
-        LIMIT 1
-    """
-
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                sql,
-                (
-                    stock_code,
-                    trade_date
-                )
-            )
-            row = cur.fetchone()
-
-    if row:
-        return row[0]
-
-    return None
+    return SummaryRepository.get_cached_summary(stock_code, trade_date)
 
 def save_summary_to_db(stock_code: str, trade_date, ai_summary: str):
-    sql = """
-        INSERT INTO stock_ai_summaries (
-            stock_code,
-            trade_date,
-            ai_summary
-        )
-        VALUES (%s, %s, %s)
-        ON CONFLICT (stock_code, trade_date)
-        DO NOTHING
-    """
-
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                sql,
-                (
-                    stock_code,
-                    trade_date,
-                    ai_summary
-                )
-            )
-        conn.commit()
+    SummaryRepository.save_summary_to_db(stock_code, trade_date, ai_summary)
 
 def get_or_create_stock_summary(stock_data: dict):
     stock_code = stock_data["stock_code"]
